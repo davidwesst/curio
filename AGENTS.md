@@ -12,7 +12,8 @@
 - `test` for adding or updating tests.
 - `refactor` for code restructuring without behavior changes.
 - `build` for build, tooling, or CI pipeline changes.
-- After the subject line, add a blank line and then bullet points.
+- After the subject line, add a single blank line and then bullet points.
+- Do not add blank lines between bullets; each bullet starts on its own line.
 - Each bullet must be a complete sentence describing a specific change.
 
 ### Example
