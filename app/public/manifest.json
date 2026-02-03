@@ -1,0 +1,15 @@
+{
+  "name": "Curio",
+  "short_name": "Curio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f2f6ff",
+  "theme_color": "#0a0f1a",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

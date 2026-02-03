@@ -1,0 +1,20 @@
+{
+  "name": "curio",
+  "private": true,
+  "packageManager": "pnpm@10.28.2",
+  "workspaces": [
+    "core-lib",
+    "app"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter @curio/app dev",
+    "build": "pnpm -r build",
+    "build:core-lib": "pnpm --filter @curio/core-lib build",
+    "build:app": "pnpm --filter @curio/app build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

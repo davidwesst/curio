@@ -1,0 +1,20 @@
+{
+  "name": "@curio/app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PWA UI layer that wraps core-lib as a service.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@curio/core-lib": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "vite": "^5.4.10"
+  }
+}
