@@ -39,6 +39,20 @@ const defaultIdFactory = (): string => {
   return fallbackId();
 };
 
+const cloneWork = (work: Work): Work => ({ ...work });
+
+const clonePayload = (payload: unknown): unknown => {
+  if (typeof globalThis.structuredClone === "function") {
+    return globalThis.structuredClone(payload);
+  }
+  return JSON.parse(JSON.stringify(payload)) as unknown;
+};
+
+const cloneChangeLogEntry = (entry: ChangeLogEntry): ChangeLogEntry => ({
+  ...entry,
+  payloadJson: clonePayload(entry.payloadJson),
+});
+
 export class Collection {
   private readonly works = new Map<string, Work>();
   private readonly changeLog: ChangeLogEntry[] = [];
@@ -76,8 +90,8 @@ export class Collection {
     };
 
     this.works.set(work.id, work);
-    this.recordChange("work.create", { workId: work.id });
-    return work;
+    this.recordChange("work.create", { work: cloneWork(work) });
+    return cloneWork(work);
   }
 
   removeWork(id: string): Work {
@@ -87,20 +101,21 @@ export class Collection {
     }
 
     this.works.delete(id);
-    this.recordChange("work.remove", { workId: id });
-    return existing;
+    this.recordChange("work.remove", { workId: id, work: cloneWork(existing) });
+    return cloneWork(existing);
   }
 
   getWork(id: string): Work | undefined {
-    return this.works.get(id);
+    const work = this.works.get(id);
+    return work ? cloneWork(work) : undefined;
   }
 
   listWorks(): Work[] {
-    return Array.from(this.works.values());
+    return Array.from(this.works.values(), (work) => cloneWork(work));
   }
 
   getChangeLog(): ChangeLogEntry[] {
-    return [...this.changeLog];
+    return this.changeLog.map((entry) => cloneChangeLogEntry(entry));
   }
 
   private recordChange(opType: string, payloadJson: unknown): void {
