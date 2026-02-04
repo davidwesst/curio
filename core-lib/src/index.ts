@@ -1,5 +1,2 @@
-export const coreLibVersion = "0.0.0";
-
-export function placeholder(): string {
-  return "curio-core";
-}
+export { Collection } from "./collection";
+export type { ChangeLogEntry, CollectionOptions, Work, WorkInput } from "./collection";
