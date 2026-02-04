@@ -33,13 +33,29 @@ describe("Collection", () => {
     ]);
   });
 
+  it("trims input fields with zod parsing", () => {
+    const ids = ["work-2", "log-2"];
+    const collection = new Collection({
+      now: () => 1_700_000_000_500,
+      idFactory: () => ids.shift() ?? "fallback",
+    });
+
+    const work = collection.addWork({
+      displayTitle: "  Final Fantasy VI ",
+      mediaTypeKey: "  media.game ",
+    });
+
+    expect(work.displayTitle).toBe("Final Fantasy VI");
+    expect(work.mediaTypeKey).toBe("media.game");
+  });
+
   it("supports explicit identifiers and timestamps", () => {
     let idCalls = 0;
     const collection = new Collection({
       now: () => 1_700_000_000_500,
       idFactory: () => {
         idCalls += 1;
-        return "log-2";
+        return "log-3";
       },
     });
 
@@ -62,7 +78,7 @@ describe("Collection", () => {
   });
 
   it("removes a work and records a change log entry", () => {
-    const ids = ["work-2", "log-3", "log-4"];
+    const ids = ["work-3", "log-4", "log-5"];
     const collection = new Collection({
       now: () => 1_700_000_001_000,
       idFactory: () => ids.shift() ?? "fallback",
@@ -79,22 +95,22 @@ describe("Collection", () => {
     expect(collection.listWorks()).toEqual([]);
     expect(collection.getChangeLog()).toEqual([
       {
-        id: "log-3",
+        id: "log-4",
         timestamp: 1_700_000_001_000,
         opType: "work.create",
         payloadJson: { work },
       },
       {
-        id: "log-4",
+        id: "log-5",
         timestamp: 1_700_000_001_000,
         opType: "work.remove",
-        payloadJson: { workId: "work-2", work },
+        payloadJson: { workId: "work-3", work },
       },
     ]);
   });
 
   it("returns copies to avoid external mutation", () => {
-    const ids = ["work-3", "log-5"];
+    const ids = ["work-4", "log-6"];
     const collection = new Collection({
       now: () => 1_700_000_002_000,
       idFactory: () => ids.shift() ?? "fallback",
@@ -107,8 +123,8 @@ describe("Collection", () => {
 
     work.displayTitle = "Changed";
 
-    expect(collection.getWork("work-3")).toEqual({
-      id: "work-3",
+    expect(collection.getWork("work-4")).toEqual({
+      id: "work-4",
       displayTitle: "EarthBound",
       mediaTypeKey: "media.game",
       createdAt: 1_700_000_002_000,
@@ -119,7 +135,7 @@ describe("Collection", () => {
   it("rejects duplicate or missing work identifiers", () => {
     const collection = new Collection({
       now: () => 1_700_000_003_000,
-      idFactory: () => "work-4",
+      idFactory: () => "work-5",
     });
 
     collection.addWork({
@@ -141,10 +157,10 @@ describe("Collection", () => {
     );
   });
 
-  it("validates required fields", () => {
+  it("validates required fields with zod", () => {
     const collection = new Collection({
       now: () => 1_700_000_004_000,
-      idFactory: () => "work-5",
+      idFactory: () => "work-6",
     });
 
     expect(() =>
@@ -152,14 +168,34 @@ describe("Collection", () => {
         displayTitle: "  ",
         mediaTypeKey: "media.game",
       }),
-    ).toThrow("Work display title is required.");
+    ).toThrow("Work input invalid for displayTitle");
 
     expect(() =>
       collection.addWork({
         displayTitle: "Mega Man X",
         mediaTypeKey: " ",
       }),
-    ).toThrow("Work media type key is required.");
+    ).toThrow("Work input invalid for mediaTypeKey");
+  });
+
+  it("uses crypto.randomUUID when available", () => {
+    const ids = ["uuid-1", "uuid-2"];
+    vi.stubGlobal("crypto", {
+      randomUUID: () => ids.shift() ?? "uuid-fallback",
+    });
+
+    try {
+      const collection = new Collection({ now: () => 1_700_000_004_500 });
+      const work = collection.addWork({
+        displayTitle: "Golden Sun",
+        mediaTypeKey: "media.game",
+      });
+
+      expect(work.id).toBe("uuid-1");
+      expect(collection.getChangeLog()[0]?.id).toBe("uuid-2");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("falls back to generated identifiers when crypto is unavailable", () => {
@@ -180,7 +216,7 @@ describe("Collection", () => {
   });
 
   it("clones change log payloads for safety", () => {
-    const ids = ["work-6", "log-6"];
+    const ids = ["work-7", "log-7"];
     const collection = new Collection({
       now: () => 1_700_000_006_000,
       idFactory: () => ids.shift() ?? "fallback",
@@ -198,12 +234,47 @@ describe("Collection", () => {
 
     expect(collection.getChangeLog()[0]?.payloadJson).toEqual({
       work: {
-        id: "work-6",
+        id: "work-7",
         displayTitle: "Castlevania",
         mediaTypeKey: "media.game",
         createdAt: 1_700_000_006_000,
         updatedAt: 1_700_000_006_000,
       },
     });
+  });
+
+  it("uses JSON cloning when structuredClone is unavailable", () => {
+    vi.stubGlobal("structuredClone", undefined);
+
+    try {
+      const ids = ["work-8", "log-8"];
+      const collection = new Collection({
+        now: () => 1_700_000_007_000,
+        idFactory: () => ids.shift() ?? "fallback",
+      });
+
+      collection.addWork({
+        displayTitle: "Advance Wars",
+        mediaTypeKey: "media.game",
+      });
+
+      const payload = collection.getChangeLog()[0]?.payloadJson as {
+        work: { displayTitle: string };
+      };
+
+      payload.work.displayTitle = "Altered";
+
+      expect(collection.getChangeLog()[0]?.payloadJson).toEqual({
+        work: {
+          id: "work-8",
+          displayTitle: "Advance Wars",
+          mediaTypeKey: "media.game",
+          createdAt: 1_700_000_007_000,
+          updatedAt: 1_700_000_007_000,
+        },
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

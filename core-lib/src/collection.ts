@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type Work = {
   id: string;
   displayTitle: string;
@@ -26,6 +28,14 @@ export type CollectionOptions = {
   idFactory?: () => string;
 };
 
+const workInputSchema = z.object({
+  id: z.string().trim().min(1).optional(),
+  displayTitle: z.string().trim().min(1),
+  mediaTypeKey: z.string().trim().min(1),
+  createdAt: z.number().optional(),
+  updatedAt: z.number().optional(),
+});
+
 const fallbackId = (): string => {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).slice(2, 10);
@@ -53,6 +63,17 @@ const cloneChangeLogEntry = (entry: ChangeLogEntry): ChangeLogEntry => ({
   payloadJson: clonePayload(entry.payloadJson),
 });
 
+const parseWorkInput = (input: WorkInput): WorkInput => {
+  const result = workInputSchema.safeParse(input);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    const path = issue?.path.join(".") ?? "input";
+    const message = issue?.message ?? "Invalid work input.";
+    throw new Error(`Work input invalid for ${path}: ${message}`);
+  }
+  return result.data;
+};
+
 export class Collection {
   private readonly works = new Map<string, Work>();
   private readonly changeLog: ChangeLogEntry[] = [];
@@ -65,17 +86,8 @@ export class Collection {
   }
 
   addWork(input: WorkInput): Work {
-    const displayTitle = input.displayTitle.trim();
-    if (!displayTitle) {
-      throw new Error("Work display title is required.");
-    }
-
-    const mediaTypeKey = input.mediaTypeKey.trim();
-    if (!mediaTypeKey) {
-      throw new Error("Work media type key is required.");
-    }
-
-    const id = input.id ?? this.idFactory();
+    const parsed = parseWorkInput(input);
+    const id = parsed.id ?? this.idFactory();
     if (this.works.has(id)) {
       throw new Error(`Work with id ${id} already exists.`);
     }
@@ -83,10 +95,10 @@ export class Collection {
     const timestamp = this.now();
     const work: Work = {
       id,
-      displayTitle,
-      mediaTypeKey,
-      createdAt: input.createdAt ?? timestamp,
-      updatedAt: input.updatedAt ?? input.createdAt ?? timestamp,
+      displayTitle: parsed.displayTitle,
+      mediaTypeKey: parsed.mediaTypeKey,
+      createdAt: parsed.createdAt ?? timestamp,
+      updatedAt: parsed.updatedAt ?? parsed.createdAt ?? timestamp,
     };
 
     this.works.set(work.id, work);
